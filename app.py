@@ -1,6 +1,8 @@
 # Import required libraries
 import joblib
 
+import os
+
 import pickle
 
 import warnings
@@ -276,20 +278,12 @@ preprocessor = Pipeline(steps=[
 
 # Pre-processing Operations
 
-# preprocessor
-
-preprocessor.fit(
-    train.drop(columns="price"),
-    train.price.copy()
-)
-
-
 # Read the dataset
 
-path = r"E:\sagemaker-flight-prices-prediction\data\train_final.csv"
-
-train = pd.read_csv(path)
-
+# path = r"E:\sagemaker-flight-prices-prediction\data\train_final.csv"
+#dir_path = r"E:\sagemaker-flight-prices-prediction\data"
+#train = pd.read_csv(os.path.join(dir_path, "train_final.csv"))
+train = pd.read_csv("train_final.csv")
 X_train = train.drop(columns="price")
 
 y_train = train.price.copy()
@@ -311,12 +305,13 @@ st.set_page_config(
 
 st.title("Flights Prices Prediction - AWS SageMaker")
 
-# user inputs
+# user inputs - selectbox(dropdown)
 airline = st.selectbox(
 	"Airline:",
 	options=X_train.airline.unique()
 )
 
+# date_input for date 
 doj = st.date_input("Date of Journey:")
 
 source = st.selectbox(
@@ -329,15 +324,18 @@ destination = st.selectbox(
 	options=X_train.destination.unique()
 )
 
+# time_input for time in hrs:mins
 dep_time = st.time_input("Departure Time:")
 
 arrival_time = st.time_input("Arrival Time:")
 
+# number_input for numeric input
 duration = st.number_input(
 	"Duration (mins):",
 	step=1
 )
 
+# step is for increase/decrease (-/+) by step mentioned
 total_stops = st.number_input(
 	"Total Stops:",
 	step=1,
@@ -349,7 +347,8 @@ additional_info = st.selectbox(
 	options=X_train.additional_info.unique()
 )
 
-# We have to change the dtype of data/time features as pandas dont work on streamlit date/time inputs
+# We have to change the dtype of data/time features as pandas dont work on streamlit date/time inputs because pandas uses its own 
+# The feature names in DataFrame should match with what preprocessor knows
 
 x_new = pd.DataFrame(dict(
 	airline=[airline],
@@ -367,14 +366,19 @@ x_new = pd.DataFrame(dict(
 })
 
 # Prediction
+# button is for new button
 
 if st.button("Predict"):
 	saved_preprocessor = joblib.load("preprocessor.joblib")
+	# Transform input as requireved for prediction
 	x_new_pre = saved_preprocessor.transform(x_new)
 
+    # Open the best model
 	with open("xgboost-model", "rb") as f:
 		model = pickle.load(f)
+	# Convert input to format required by xgboost model
 	x_new_xgb = xgb.DMatrix(x_new_pre)
 	pred = model.predict(x_new_xgb)[0]  # Here we have to take the first element
 
+    # info is for display
 	st.info(f"The predicted price is {pred:,.0f} INR")
